@@ -71,8 +71,19 @@ MuseScore {
                                           }
                                     }
                                     var notes = cursor.element.notes;
+                                    var stackNotes = [];
+                                    var stackAccidental = [];
                                     for (var k = 0; k < notes.length; k++) {
                                           var note = notes[k];
+                                          console.log("octave: " + baseOctave(note));
+                                          console.log("base: " + k + " " + baseNote(note));
+                                          if (k != 0) {
+                                                if(baseNote(notes[k - 1]) != baseNote(note) || baseOctave(notes[k - 1]) != baseOctave(note)) {
+                                                      console.log(k);
+                                                }
+                                          }
+                                    }
+                                    for (var k = 0; k < notes.length; k++) {
                                           if (curlen != 0) {
                                                 var commaList = cursor.segment.annotations[0].text.split("\n");
                                                 func(note, commaList[commaList.length - k - 1]);
@@ -88,14 +99,20 @@ MuseScore {
             }
       }
       
+      function tune(note, comma) {
+            if (comma[0] == "*" && note.accidentalType > 7) { // HEJI mode
+                  note.tuning = baseNoteTuning(baseNote(note)) + sharpFlatTuning(note) + arrowTuning(note);
+            } else { // FJS mode
+                  note.tuning = baseNoteTuning(baseNote(note)) + sharpFlatTuning(note) + otonalToComma(comma);
+            }
+      }
+      
       function otonalToComma(str) {
             str = str.split("/");
-            console.log("d " + str);
             var a = primeFactors(str[0]);
             var totalComma = 0;
             for (var i = 0; i < a.length; i++) {
                   totalComma += fundamentalCommas(a[i]);
-                  console.log(fundamentalCommas(a[i]));
             }
             
             if(str.length != 0) {
@@ -201,6 +218,10 @@ MuseScore {
             }
       }
       
+      function baseOctave(note) {
+            return Math.floor((note.pitch - accidentalVal(note))/12) - 1;
+      }
+      
       function baseNote(note) {
             var midiNum = (note.pitch - accidentalVal(note)) % 12;
             switch (midiNum) {
@@ -216,7 +237,7 @@ MuseScore {
       }
       
       function accidentalVal(note) {
-      console.log(note.accidentalType+0);
+      //console.log(note.accidentalType+0);
       var acx = note.accidentalType + 0;
       // why +0?
       // there are a lot of unsolved problems in the world
@@ -452,21 +473,12 @@ MuseScore {
             var val = diatonicKeyVal(midiNum, steps) + interpretIntervalPrefix(interval) + accidentalVal(note);
  
             c.next();
-            
             c.addNote(diatonicStep(midiNum, steps));
             c.prev();
             var x = c.element.notes[0];
             // console.log(x);
             x.line = noteToLine(x);
             x.accidentalType = valAccidental(val);
-      }
-      
-      function tune(note, comma) {
-            if (comma[0] == "*" && note.accidentalType > 7) { // HEJI mode
-                  note.tuning = baseNoteTuning(baseNote(note)) + sharpFlatTuning(note) + arrowTuning(note);
-            } else { // FJS mode
-                  note.tuning = baseNoteTuning(baseNote(note)) + sharpFlatTuning(note) + otonalToComma(comma);
-            }
       }
       
       function noteToLine(note) {
@@ -485,15 +497,25 @@ MuseScore {
             }
       }
       
-      onRun: {    
-            // intervalStep(0, "d3");     
+      function noteTick(note) {
+            var esc = 0; 
+            while (note.type != Element.SEGMENT) {
+                  note = note.parent;
+                  if(note.tick >= 0) {console.log(note.tick); return note.tick}; 
+                  esc++;		
+                  if(esc > 6) {return undefined;}
+            }
+      }
+      
+      onRun: {
             // applyToNotesInSelection(tune, true);
+            // Qt.quit();
       }
       
       
       GridLayout {
             anchors.fill: parent
-            columns: 2
+            columns: 3
             rowSpacing: 5
             
             Button {
@@ -501,6 +523,13 @@ MuseScore {
                   Layout.columnSpan: 2
                   Layout.fillWidth: true
                   onClicked: {applyToNotesInSelection(tune, true);}
+            }
+            
+            Button {
+                  text: "input note"
+                  Layout.columnSpan: 2
+                  Layout.fillWidth: true
+                  onClicked: {intervalStep(noteTick(curScore.selection.elements[0]), "m3");}
             }
       }
       
@@ -515,7 +544,6 @@ MuseScore {
                   console.log(key);
             }
       }
-      
       
       /*******************
       * fraction methods *
