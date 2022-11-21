@@ -1,4 +1,4 @@
-import QtQuick 2.2
+import QtQuick 2.2 // TODO : HEJI note name support
 import MuseScore 3.0
 import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.3
@@ -197,6 +197,38 @@ MuseScore {
             case "23": ratio = "736/729"; break;
             case "29": ratio = "261/256"; break;
             case "31": ratio = "248/243"; break;
+            case "37": ratio = "37/36"; break;
+            case "41": ratio = "82/81"; break;
+            case "43": ratio = "129/128"; break;
+            case "47": ratio = "47/48"; break;
+            case "53": ratio = "53/54"; break;
+            case "59": ratio = "236/243"; break;
+            case "61": ratio = "244/243"; break;
+            default: ratio = "1/1";
+            }
+            return rtc(ratio);
+      }
+      
+      function HEJICommas(prime) {
+            prime += ""; // convert to string!
+            var ratio;
+            switch (prime) {
+            case "5": ratio = "80/81"; break;
+            case "7": ratio = "63/64"; break;
+            case "11": ratio = "33/32"; break;
+            case "13": ratio = "26/27"; break;
+            case "17": ratio = "4131/4096"; break;
+            case "19": ratio = "513/512"; break;
+            case "23": ratio = "736/729"; break;
+            case "29": ratio = "261/256"; break;
+            case "31": ratio = "248/243"; break;
+            case "37": ratio = "37/36"; break;
+            case "41": ratio = "82/81"; break;
+            case "43": ratio = "129/128"; break;
+            case "47": ratio = "752/729"; break;
+            case "53": ratio = "53/54"; break;
+            case "59": ratio = "236/243"; break;
+            case "61": ratio = "244/243"; break;
             default: ratio = "1/1";
             }
             return rtc(ratio);
@@ -214,6 +246,36 @@ MuseScore {
             case "23": return 6; break;
             case "29": return -2; break;
             case "31": return 5; break;
+            case "37": return 2; break;
+            case "41": return 4; break;
+            case "43": return -1; break;
+            case "47": return 1; break;
+            case "53": return 3; break;
+            case "59": return 5; break;
+            case "61": return 5; break;
+            default: return 0;
+            }
+      }
+      
+      function HEJIfshift(prime) {
+            prime += "";
+            switch (prime) {
+            case "5": return 4; break;
+            case "7": return -2; break;
+            case "11": return -1; break;
+            case "13": return 3; break;
+            case "17": return 7; break;
+            case "19": return -3; break;
+            case "23": return 6; break;
+            case "29": return -2; break;
+            case "31": return 0; break;
+            case "37": return 2; break;
+            case "41": return 4; break;
+            case "43": return -1; break;
+            case "47": return 1; break;
+            case "53": return 3; break;
+            case "59": return 5; break;
+            case "61": return 5; break;
             default: return 0;
             }
       }
@@ -352,16 +414,16 @@ MuseScore {
             }
       }
       
-      property var genericNoteNames: ["m2", "m6", "m3", "m7", "P4", "P1", "P5", "M2", "M6", "M3", "M7"];
+      property var genericIntervalNames: ["m2", "m6", "m3", "m7", "P4", "P1", "P5", "M2", "M6", "M3", "M7"];
       
-      function noteName(a) {
+      function intervalName(a, mode) {
             a = toVector(a, 31);
             var f = a[2] + 5;
             console.log(a);
             var o = "1";
             var u = "1";
             for (var i = 3; i < a.length; i++) {
-                  f += a[i] * fshift(primePos(i));
+                  f += a[i] * (mode == "HEJI" ? HEJIfshift(primePos(i)) : fshift(primePos(i)));
                   if(a[i] > 0) o = mul(o, expon(primePos(i)+"", a[i]+""));
                   if(a[i] < 0) u = mul(u, expon(primePos(i)+"", -a[i]+""));
             }
@@ -375,11 +437,19 @@ MuseScore {
                   p += "d";
                   f += 7;
             }
-            return p + (p == "" ? genericNoteNames[f] : genericNoteNames[f].charAt(1))
+            return p + (p == "" ? genericIntervalNames[f] : genericIntervalNames[f].charAt(1))
                   + (o == "1" ? "" : "^" + o) + (u == "1" ? "" : "_" + u);
       }
       
       function interpretIntervalPrefix(str) {
+            if (str.includes("-")) {
+                  return interpretIntervalPrefixDesc(str);
+            } else {
+                  return interpretIntervalPrefixAsc(str);
+            }
+      }
+      
+      function interpretIntervalPrefixAsc(str) {
             if (str.length == 1) {return;}
             var r = 0;
             if (str.length > 2) {
@@ -417,33 +487,89 @@ MuseScore {
             }
       }
       
+      function interpretIntervalPrefixDesc(str) {
+            if (str.length <= 2) {return;}
+            var r = 0;
+            if (str.length > 3) {
+                  if (str.charAt(0) == "A") r += str.length - 2;
+                  else if (str.charAt(0) == "d") r = str.length - 2;
+            }
+            var s = str.substring(str.length - 3);
+            console.log(s);
+            switch (s) { // centered at A
+            case "P-1": return r; break;
+            case "m-2": return r + 1; break;
+            case "M-2": return r; break;
+            case "m-3": return r; break;
+            case "M-3": return r - 1; break;
+            case "P-4": return r; break;
+            case "P-5": return r; break;
+            case "m-6": return r; break;
+            case "M-6": return r - 1; break;
+            case "m-7": return r; break;
+            case "M-7": return r - 1; break;
+            case "A-1": return r - 1; break;
+            case "A-2": return r - 1; break;
+            case "A-3": return r - 2; break;
+            case "A-4": return r - 1; break;
+            case "A-5": return r - 1; break;
+            case "A-6": return r - 2; break;
+            case "A-7": return r - 2; break;
+            case "d-1": return r + 1; break;
+            case "d-2": return r + 2; break;
+            case "d-3": return r + 1; break;
+            case "d-4": return r + 1; break;
+            case "d-5": return r + 1; break;
+            case "d-6": return r + 2; break;
+            case "d-7": return r + 2; break;
+            default: return;
+            }
+      }
+      
       function diatonicStep(note, steps) { // default mode is natural minor
-            if (steps <= 0) return;
+            steps = parseInt(steps);
+            console.log(steps);
+            if (steps == 0 || steps.length > 10) return;
             var midiNum = note - accidentalVal(note);
             if (steps == 1) {return midiNum;}
             var m = midiNum % 12;
-            switch (m) {
-            case 9: midiNum += 2; break;
-            case 11: midiNum += 1; break;
-            case 0: midiNum += 2; break;
-            case 2: midiNum += 2; break;
-            case 4: midiNum += 1; break;
-            case 5: midiNum += 2; break;
-            case 7: midiNum += 2; break;
-            default: return;
+            if (steps > 1) {
+                  switch (m) {
+                  case 9: midiNum += 2; break;
+                  case 11: midiNum += 1; break;
+                  case 0: midiNum += 2; break;
+                  case 2: midiNum += 2; break;
+                  case 4: midiNum += 1; break;
+                  case 5: midiNum += 2; break;
+                  case 7: midiNum += 2; break;
+                  default: return;
+                  }
             }
-            steps -= 1;
-            if (steps == 1) {return midiNum;} 
+            if (steps < -1) {
+                  switch (m) {
+                  case 9: midiNum -= 2; break;
+                  case 11: midiNum -= 2; break;
+                  case 0: midiNum -= 1; break;
+                  case 2: midiNum -= 2; break;
+                  case 4: midiNum -= 2; break;
+                  case 5: midiNum -= 1; break;
+                  case 7: midiNum -= 2; break;
+                  default: return;
+                  }
+            }
+            steps += (steps > 1 ? -1 : 1);
+            if (steps == 1 || steps == -1) {return midiNum;} 
             else {return diatonicStep(midiNum, steps)};
       }
       
       function diatonicKeyVal(note, steps) {
-            if (steps <= 0) return;
-            if (steps == 1) return 0;
+            if (steps == 0) return;
+            if (steps == 1 || steps == -1) return 0;
             var midiNum = note - accidentalVal(note);
             var m = midiNum % 12;
-            if (m == 9) return 0;
+            // if (m == 9) return 0;
             var n = m + "" + steps;
+            console.log(n);
             switch (n) {
             case "112": return 1; break;
             case "115": return 1; break;
@@ -458,25 +584,44 @@ MuseScore {
             case "57": return -1; break;
             case "73": return -1; break;
             case "76": return -1; break;
+            case "0-2": return -1; break;
+            case "5-2": return -1; break;
+            case "4-3": return 1; break;
+            case "9-3": return 1; break;
+            case "11-3": return 1; break;
+            case "11-4": return 1; break;
+            case "5-5": return -1; break;
+            case "0-6": return 1; break;
+            case "2-6": return 1; break;
+            case "4-6": return 1; break;
+            case "9-6": return 1; break;
+            case "11-6": return 1; break;
+            case "4-7": return 1; break;
+            case "11-7": return 1; break;
             default: return 0;
             }
       }
       
-      function intervalStep(tick, interval) {            
+      function intervalStep(tick, interval, dur_z, dur_n) {            
             var c = curScore.newCursor();
             c.track = 0;
             c.rewindToTick(tick);
             
             var note = c.element.notes[0];
             var midiNum = note.pitch - accidentalVal(note);
-            var steps = interval.charAt(interval.length - 1);
+            var steps = (interval.charAt(interval.length - 2) == "-" ? "-" : "") + interval.charAt(interval.length - 1);
             var val = diatonicKeyVal(midiNum, steps) + interpretIntervalPrefix(interval) + accidentalVal(note);
- 
+            console.log(midiNum + " " + steps + " " + val);
             c.next();
+            if (dur_z !== undefined && dur_n !== undefined) {
+                  c.setDuration(dur_z, dur_n);
+            } else {
+                  c.setDuration(1, 4);
+            }
             c.addNote(diatonicStep(midiNum, steps));
             c.prev();
             var x = c.element.notes[0];
-            // console.log(x);
+            console.log(x);
             x.line = noteToLine(x);
             x.accidentalType = valAccidental(val);
       }
@@ -512,7 +657,6 @@ MuseScore {
             // Qt.quit();
       }
       
-      
       GridLayout {
             anchors.fill: parent
             columns: 3
@@ -526,10 +670,74 @@ MuseScore {
             }
             
             Button {
-                  text: "input note"
-                  Layout.columnSpan: 2
-                  Layout.fillWidth: true
-                  onClicked: {intervalStep(noteTick(curScore.selection.elements[0]), "m3");}
+                  text: "m3"
+                  Layout.columnSpan: 1
+                  Layout.fillWidth: false
+                  onClicked: {
+                        stepper("m3");
+                  }
+            }
+            
+            Button {
+                  text: "M3"
+                  Layout.columnSpan: 1
+                  Layout.fillWidth: false
+                  onClicked: {
+                        stepper("M3");
+                  }
+            }
+            Button {
+                  text: "m-7"
+                  Layout.columnSpan: 1
+                  Layout.fillWidth: false
+                  onClicked: {
+                        stepper("m-7");
+                  }
+            }
+            
+            Button {
+                  text: "M-6"
+                  Layout.columnSpan: 1
+                  Layout.fillWidth: false
+                  onClicked: {
+                        stepper("M-6");
+                  }
+            }
+            
+            Button {
+                  text: "P-5"
+                  Layout.columnSpan: 1
+                  Layout.fillWidth: false
+                  onClicked: {
+                        stepper("P-5");
+                  }
+            }
+            
+            Button {
+                  text: "P-4"
+                  Layout.columnSpan: 1
+                  Layout.fillWidth: false
+                  onClicked: {
+                        stepper("P-4");
+                  }
+            }
+            
+            Button {
+                  text: "m-3"
+                  Layout.columnSpan: 1
+                  Layout.fillWidth: false
+                  onClicked: {
+                        stepper("m-3");
+                  }
+            }
+            
+            Button {
+                  text: "M-2"
+                  Layout.columnSpan: 1
+                  Layout.fillWidth: false
+                  onClicked: {
+                        stepper("M-2");
+                  }
             }
       }
       
@@ -543,6 +751,13 @@ MuseScore {
             function keyPressEvent(key) {
                   console.log(key);
             }
+      }
+      
+      function stepper(interval) {
+            curScore.startCmd();
+            intervalStep(noteTick(curScore.selection.elements[0]), interval, 1, 4);
+            applyToNotesInSelection(tune, true);
+            curScore.endCmd();
       }
       
       /*******************
